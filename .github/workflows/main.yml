@@ -1,0 +1,88 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  linux-static:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      
+      - name: get graal
+        run: |
+          chmod u+x script/get-graal && script/get-graal
+          
+      - name: Install native dev tools
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install curl unzip gcc g++ build-essential zlib1g-dev libsnappy-dev
+          sudo -E script/setup-musl
+        shell: bash
+
+      - name: Cache deps
+        uses: actions/cache@v1
+        id: cache-deps
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-deps-${{ hashFiles('deps.edn') }}
+          restore-keys: |
+                ${{ runner.os }}-deps-
+                
+      - name: Install clojure tools
+        uses: DeLaGuardo/setup-clojure@9.3
+        with:
+          # Install just one or all simultaneously
+          # The value must indicate a particular version of the tool, or use 'latest'
+          # to always provision the latest version
+          cli: 1.11.1
+          bb: 0.9.160
+
+
+      #- name: Install clojure
+      #  run: chmod u+x script/install-clojure && script/install-clojure
+      #  shell: bash
+        
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.5.0
+        with:
+          babashka-version: 0.8.156
+
+      - name: Check bb runs
+        run: bb --version
+
+      - name: compile with bb
+        run: bb native-image
+
+      # - name: Make native image
+      #   run: chmod u+x script/compile && script/compile
+      #   shell: bash
+
+      # - uses: actions/upload-artifact@v2
+      #   with:
+      #     name: dataloader
+      #     path: dataloader
+
+      - name: Upload binaries to releases
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_name: Jacob-Kroeze/dataloader-release
+          repo_token: ${{ secrets.DATALOADER_RELEASE }}
+          file: dbloader
+          asset_name: dbloader
+          tag: LATEST
+          overwrite: true
+          body: "SNAPSHOT release of simple dbloader"
