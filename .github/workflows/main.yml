@@ -30,7 +30,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -y install curl unzip gcc g++ build-essential zlib1g-dev libsnappy-dev
-          sudo -E script/setup-musl
+          chmod u+x script/setup-musl && script/setup-musl
         shell: bash
 
       - name: Cache deps
