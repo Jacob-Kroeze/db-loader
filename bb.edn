@@ -1,0 +1,72 @@
+{:tasks
+ {:requires    ([babashka.fs :as fs]
+                [clojure.string :as str])
+  :init        (def windows? (str/starts-with? (System/getProperty "os.name")
+                               "Windows"))
+  run-main     {:doc  "Run main"
+                :task (apply clojure "-M -m dbloader.main" *command-line-args*)}
+  uberjar      {:doc  "Builds uberjar"
+                :task (when (seq (fs/modified-since "dbloader.jar"
+                                   ["deps.edn" "build.clj" "src"]))
+                        (clojure "-T:build uber"))}
+  run-uber     {:doc     "Run uberjar"
+                :depends [uberjar]
+                :task    (apply shell "java -jar dbloader.jar" *command-line-args*)}
+  graalvm      {:doc "Checks GRAALVM_HOME env var"
+                :task
+                (let [env (System/getenv "GRAALVM_HOME")]
+                  (assert env "Set GRAALVM_HOME")
+                  env)}
+  native-image {:doc     "Builds native image"
+                :depends [graalvm uberjar]
+                :task    (do
+                           (shell (str (fs/file graalvm
+                                         "bin"
+                                         (if windows?
+                                           "gu.cmd"
+                                           "gu")))
+                             "install" "native-image")
+                           (shell (str (fs/file graalvm
+                                         "bin"
+                                         (if windows?
+                                           "native-image.cmd"
+                                           "native-image")))
+                             "-jar" "dbloader.jar"
+                             "--no-fallback" "--no-server"
+                             "--enable-all-security-services"
+                             (str "--initialize-at-build-time="
+                               ",java.sql.SQLException"
+                               ",org.apache.parquet.column.values.bitpacking.LemireBitPackingBE"
+                               ",org.apache.parquet.column.values.bitpacking.Packer"
+                               ;"ch.qos.logback"
+                               ;",org.slf4j"
+                               ;",com.sun.org.apache.xml.internal.serializer.ToXMLStream"
+                               ;",jdk.xml.internal.SecuritySupport"
+                               ;",com.sun.org.apache.xerces.internal.impl.dtd.XMLDTDProcessor"
+                               ;",ch.qos.logback.core.ConsoleAppender"
+                               ;",javax.xml.parsers.FactoryFinder"
+                               ;",com.sun.org.apache.xerces.internal.impl.XMLNSDocumentScannerImpl"
+                               ;",com.sun.org.apache.xerces.internal.impl.XMLEntityManager"
+                               ;",com.sun.org.apache.xerces.internal.impl.XMLVersionDetector"
+                               )
+                             "-H:IncludeResourceBundles=com.microsoft.sqlserver.jdbc.SQLServerResource"
+                             (str "--initialize-at-run-time="
+                               "com.microsoft.sqlserver.jdbc.SQLServerFMTQuery"
+                               ",com.microsoft.sqlserver.jdbc.SQLServerFMTQuery"
+                               ",com.microsoft.sqlserver.jdbc.SQLServerBouncyCastleLoader"
+                               ",com.microsoft.sqlserver.jdbc.SQLServerBulkCSVFileRecord"
+                               ",com.microsoft.sqlserver.jdbc.SQLServerBulkCopyOptions"
+                               ",com.microsoft.sqlserver.jdbc.SQLServerBulkCopy"
+                               ",com.microsoft.sqlserver.jdbc.SQLServerMSAL4JUtils"
+                               )
+                             "-H:+AddAllCharsets"
+                             "-H:Name=dbloader"
+                             "-H:+ReportExceptionStackTraces"
+                             "--allow-incomplete-classpath"
+                             "-J-Dclojure.spec.skip-macros=true"
+                             "-J-Dclojure.compiler.direct-linking=true"
+                             "-J-Dtech.v3.datatype.graal-native=true"
+                             "--report-unsupported-elements-at-runtime"
+                             ;;"--trace-class-initialization=jdk.xml.internal.SecuritySupport"
+                             ;;"--trace-class-initialization=com.microsoft.sqlserver.jdbc.SQLServerResource"
+                             ))}}}

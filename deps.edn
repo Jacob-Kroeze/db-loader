@@ -1,0 +1,37 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.0"}
+        org.clojure/tools.cli {:mvn/version "1.0.206"}
+        com.hyperfiddle/rcf {:mvn/version "20220405"}
+        techascent/tech.ml.dataset.sql {:mvn/version "6.046-01"}
+        techascent/tech.ml.dataset {:mvn/version "6.093"
+                                    :exclusions [ch.qos.logback/logback-classic]}
+        com.microsoft.sqlserver/mssql-jdbc {:mvn/version "10.2.1.jre17"}
+        seancorfield/next.jdbc {:mvn/version "1.1.613"}
+
+        org.apache.parquet/parquet-hadoop {:mvn/version "1.12.0"
+                                           :exclusions [org.slf4j/slf4j-log4j12]}
+        org.apache.hadoop/hadoop-common {:mvn/version "3.3.0"
+                                         :exclusions [org.slf4j/slf4j-log4j12
+                                                      log4j/log4j]}
+        org.apache.hadoop/hadoop-mapreduce-client-core {:mvn/version "3.3.3"
+                                                        :exclusions [org.slf4j/slf4j-log4j12 org.slf4j/slf4j-reload4j]}
+
+        ;io.pedestal/pedestal.log {:mvn/version "0.5.10"}
+        timbre/timbre {:mvn/version "0.5.1-SNAPSHOT"}
+        com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
+        ;timbre-over-slf4j/timbre-over-slf4j {:mvn/version "0.1.0-SNAPSHOT"}
+        ;org.slf4j/jul-to-slf4j {:mvn/version "1.7.30"}
+        ;org.slf4j/jcl-over-slf4j {:mvn/version "1.7.30"}
+        ;org.slf4j/log4j-over-slf4j {:mvn/version "1.7.30"}
+        ;org.slf4j/osgi-over-slf4j {:mvn/version "1.7.30"}
+        ;org.apache.logging.log4j/log4j-to-slf4j {:mvn/version "2.17.2"}
+
+        com.github.clj-easy/graal-config-next {:git/url   "https://github.com/clj-easy/graal-config"
+                                                :git/sha   "0dc2862e1b1c9871eef4c306ef77da3610a2bd93"
+                                                :deps/root "config/com.github.seancorfield/next.jdbc"}
+        }
+ :aliases
+ {:dev {:extra-paths ["dev"]}
+  :native-deps {:extra-deps {com.github.clj-easy/graal-build-time {:mvn/version "0.1.0"}}}
+  :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.3" :git/sha "0d20256c40b5a6b6adbcbdf7d0c52cf9e22e994d"}}
+          :ns-default build}}}
