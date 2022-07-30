@@ -88,8 +88,8 @@ jobs:
       - name: Upload binaries to releases
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_name: Jacob-Kroeze/dataloader-release
-          repo_token: ${{ secrets.DATALOADER_RELEASE }}
+          repo_name: Jacob-Kroeze/dbloader
+          repo_token: ${{ secrets.DBLOADER_RELEASE }}
           file: dbloader
           asset_name: dbloader
           tag: LATEST
