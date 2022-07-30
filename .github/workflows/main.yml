@@ -85,13 +85,7 @@ jobs:
       #     name: dataloader
       #     path: dataloader
 
-      - name: Upload binaries to releases
-        uses: svenstaro/upload-release-action@v2
+      - name: Release
+        uses: softprops/action-gh-release@v1
         with:
-          repo_name: Jacob-Kroeze/dbloader
-          repo_token: ${{ secrets.DBLOADER_RELEASE }}
-          file: dbloader
-          asset_name: dbloader
-          tag: LATEST
-          overwrite: true
-          body: "SNAPSHOT release of simple dbloader"
+          files: dbloader
