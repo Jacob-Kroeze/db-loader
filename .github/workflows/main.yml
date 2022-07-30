@@ -21,16 +21,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      
-      - name: get graal
-        run: |
-          chmod u+x script/get-graal && script/get-graal
-          
+
+      - name: Setup GraalVM+musl
+        uses: graalvm/setup-graalvm@v1
+        with:
+          version: '22.2.0'
+          java-version: '17'
+          components: 'native-image'
+          native-image-musl: true
+##           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+#      - name: get graal
+#        run: |
+#          chmod u+x script/get-graal && script/get-graal
+
       - name: Install native dev tools
         run: |
           sudo apt-get update
           sudo apt-get -y install curl unzip gcc g++ build-essential zlib1g-dev libsnappy-dev
-          chmod u+x script/setup-musl && script/setup-musl
+          # chmod u+x script/setup-musl && script/setup-musl
         shell: bash
 
       - name: Cache deps
