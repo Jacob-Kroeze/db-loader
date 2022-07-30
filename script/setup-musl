@@ -15,7 +15,7 @@ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC
 sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 648ACFD622F3D138
 
 ##
-cat >> /etc/apt/sources.list <<eof
+sudo cat >> /etc/apt/sources.list <<eof
 deb http://ftp.us.debian.org/debian bullseye main non-free contrib
 #deb http://non-us.debian.org/debian-non-us bullseye/non-us main contrib non-free
 eof
