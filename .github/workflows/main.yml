@@ -28,7 +28,7 @@ jobs:
           version: '22.2.0'
           java-version: '17'
           components: 'native-image'
-#          native-image-musl: true
+          native-image-musl: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
 #      - name: get graal
@@ -59,16 +59,6 @@ jobs:
           # to always provision the latest version
           cli: 1.11.1.1149
           bb: 0.9.160
-
-
-      #- name: Install clojure
-      #  run: chmod u+x script/install-clojure && script/install-clojure
-      #  shell: bash
-        
-#      - name: Setup Babashka
-#        uses: turtlequeue/setup-babashka@v1.5.0
-#        with:
-#          babashka-version: 0.8.156
 
       - name: Check bb runs
         run: bb --version
