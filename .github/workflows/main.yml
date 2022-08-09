@@ -27,6 +27,7 @@ jobs:
         with:
           version: '22.2.0'
           java-version: '17'
+          set-java-home: true
           components: 'native-image'
           native-image-musl: true
           github-token: ${{ secrets.GITHUB_TOKEN }}

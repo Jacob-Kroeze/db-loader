@@ -32,6 +32,8 @@
                                            "native-image.cmd"
                                            "native-image")))
                              "-jar" "dbloader.jar"
+                             "--static"
+                             "--libc=musl"
                              "--no-fallback" "--no-server"
                              "--enable-all-security-services"
                              (str "--initialize-at-build-time="
