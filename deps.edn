@@ -17,7 +17,8 @@
                                                         :exclusions [org.slf4j/slf4j-log4j12 org.slf4j/slf4j-reload4j]}
 
         ;io.pedestal/pedestal.log {:mvn/version "0.5.10"}
-        timbre/timbre {:mvn/version "0.5.1-SNAPSHOT"}
+        ;timbre/timbre {:mvn/version "0.5.1-SNAPSHOT"}
+        com.taoensso/timbre {:mvn/version "5.2.1"}
         com.fzakaria/slf4j-timbre {:mvn/version "0.3.21"}
         ;timbre-over-slf4j/timbre-over-slf4j {:mvn/version "0.1.0-SNAPSHOT"}
         ;org.slf4j/jul-to-slf4j {:mvn/version "1.7.30"}
