@@ -40,6 +40,7 @@
                                "java.sql.SQLException"
                                ",org.apache.parquet.column.values.bitpacking.LemireBitPackingBE"
                                ",org.apache.parquet.column.values.bitpacking.Packer"
+                               ",com.github.fzakaria.slf4j.timbre.TimbreLoggerFactory"
                                ;"ch.qos.logback"
                                ;",org.slf4j"
                                ;",com.sun.org.apache.xml.internal.serializer.ToXMLStream"
