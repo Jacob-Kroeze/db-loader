@@ -62,6 +62,7 @@
                              "-H:+AddAllCharsets"
                              "-H:Name=dbloader"
                              "-H:+ReportExceptionStackTraces"
+                             "-H:+TraceNativeToolUsage"
                              "--allow-incomplete-classpath"
                              "-J-Dclojure.spec.skip-macros=true"
                              "-J-Dclojure.compiler.direct-linking=true"
