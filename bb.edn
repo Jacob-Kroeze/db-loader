@@ -35,7 +35,7 @@
                              "--no-fallback" "--no-server"
                              "--enable-all-security-services"
                              (str "--initialize-at-build-time="
-                               ",java.sql.SQLException"
+                               "java.sql.SQLException"
                                ",org.apache.parquet.column.values.bitpacking.LemireBitPackingBE"
                                ",org.apache.parquet.column.values.bitpacking.Packer"
                                ;"ch.qos.logback"
