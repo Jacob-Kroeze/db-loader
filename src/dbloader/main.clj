@@ -8,7 +8,8 @@
             [clojure.java.io :as io]
             [next.jdbc :as jdbc]
             [clojure.edn :as edn]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [slf4j-timbre.adapter])
   (:gen-class))
 
 
