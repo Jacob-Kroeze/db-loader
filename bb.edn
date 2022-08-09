@@ -43,6 +43,7 @@
                                ",com.github.fzakaria.slf4j.timbre.TimbreLoggerFactory"
                                ",org.apache.parquet.hadoop.metadata.CompressionCodecName"
                                ",org.slf4j.impl.StaticLoggerBinder"
+                               ",org.slf4j.LoggerFactory"
                                ;"ch.qos.logback"
                                ;",org.slf4j"
                                ;",com.sun.org.apache.xml.internal.serializer.ToXMLStream"
