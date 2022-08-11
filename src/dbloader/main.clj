@@ -5,6 +5,7 @@
             [tech.v3.libs.parquet :as parquet]
             [tech.v3.dataset :as ds]
             [tech.v3.dataset.sql :as sql]
+            [tech.v3.dataset.io.datetime :as datetime]
             [clojure.java.io :as io]
             [next.jdbc :as jdbc]
             [clojure.edn :as edn]
@@ -26,7 +27,12 @@
 
 (defn usage [options-summary]
   (->> ["Use this program to load a <file.parquet>
-   file into a Microsoft SQL database"
+         file into a Microsoft SQL database. Files
+         prefixed with an ISO yyyy-MM-dd will have that
+         date put into a col call ``load_date```. Files
+         starting with a number will fail.
+         E.G 2002-2-2-test.parquet fails;
+         2022-02-02-test.parquet succeeds."
         ""
         "Usage: dbloader [options] action"
         ""
@@ -104,19 +110,54 @@
    :trustServerCertificate true}
   )
 
-(defn file-path-to-table-name [filename]
+(defn remove-date [date s]
+  (let [date-removed (string/replace s (re-pattern (str date)) "")
+        [f & r] date-removed]
+    (cond
+      (nil? date) s
+      (empty? date-removed) nil
+      r (apply str r)
+      :else r)))
+
+(rcf/tests
+  (remove-date (java.time.LocalDate/parse "2022-02-02") "2022-02-02" ) := nil
+  (remove-date (java.time.LocalDate/parse "2022-02-02") "2022-02-02-" ) := nil
+  (remove-date (java.time.LocalDate/parse "2022-02-02") "2022-02-02-test.parquet" ) := "test.parquet"
+  (remove-date (java.time.LocalDate/parse "2022-08-10")
+    "2022-08-10-test.test.test.parquet")
+
+  )
+
+(defn file-path-to-table-name
+  "If using prefix date for popMust be iso yyyy-MM-dd"
+  [filename]
   ;(def path-vec ["a" "b" "c" "d"])
   (let [path-vec (string/split (.getName (io/file filename))
                                #"\.")
+
+        date-prefix (try (datetime/parse-local-date
+                           (apply str (take 10 (first path-vec))))
+                         (catch Throwable e nil))
+        ;_ (def d date-prefix)
+        ;_ (def a path-vec) ;path-vec
         n (count path-vec)]
-    (if (= 2 n) (first path-vec)
-                (string/join "."
-                             (conj []
-                                   (first path-vec)
-                                   (string/join "_" (butlast (rest path-vec))))))))
+    (cond (= 2 n) [date-prefix (remove-date date-prefix (first path-vec))]
+          (< 2 n) [date-prefix (string/join "."
+                                            (conj []
+                                                  (remove-date date-prefix (first path-vec))
+                                                  (string/join "_" (butlast (rest path-vec)))))])))
 
 (rcf/tests
-  (file-path-to-table-name "this/is/a/test.test.test.parquet") := "test.test_test"
+
+  (let [[date table] (file-path-to-table-name "/no/schema/test.parquet")] table) := "test"
+  (let [[date table] (file-path-to-table-name "/yes/schema/test.test.test.parquet")] table) := "test.test_test"
+
+  (let [[date table] (file-path-to-table-name "this/is/a/DATED/2022-08-10-test.parquet")] [(str date) table]) := ["2022-08-10" "test"] ;; n = 2
+
+  (let [[date table] (file-path-to-table-name "this/is/a/DATED/2022-08-10-test.test.test.parquet")] [(str date) table]) := ["2022-08-10" "test.test_test"] ;; n > 2
+
+  (file-path-to-table-name "test/data/2022-8-10-fact.test.parquet")
+
   )
 
 
@@ -124,9 +165,10 @@
   "Given tbl and file, use tech ml dataset to parse, then load to db"
   [conn file-in]
   (let [
+        [load-date table-name] (file-path-to-table-name file-in)
         DS (load-parquet file-in)
-        table-name (file-path-to-table-name file-in)
-        DS (ds/set-dataset-name DS table-name)]
+        DS (ds/set-dataset-name DS table-name)
+        DS (assoc DS "load_date" (or load-date (java.time.LocalDate/now)))]
     (sql/ensure-table! conn DS)
     (sql/insert-dataset! conn DS)
     table-name))
@@ -139,6 +181,7 @@
   (def filename "test/data/fact.test.parquet")
   (def DS (ds/->dataset [{:x 1 :y 2} {:x 2 :y 4}]))
   (ds/write! DS filename)
+  (ds/write! DS "test/data/test.csv")
   (def DS2 (load-parquet filename))
   (file->db conn filename) := "fact.test"
 
@@ -149,9 +192,18 @@
   (file->db conn filename2) := "test"
 
   (def DS (ds/->dataset [{:x 1 :y 2} {:x 2 :y 4}]))
+
   (ds/write! DS "test/data/test.parquet")
   (-> (load-parquet (io/file "test/data/test.parquet")) ffirst) := (-> DS ffirst)
   (ds/write! DS "test/data/fact.test.test.parquet")
+
+  (def dated-file "test/data/2022-08-10-fact.test.parquet")
+  (def dated-ds (ds/write! DS dated-file))
+  (file->db conn dated-file)
+
+  (jdbc/execute! conn ["drop table test"])
+  (jdbc/execute! conn ["select * from fact.test"])
+
   )
 
 
