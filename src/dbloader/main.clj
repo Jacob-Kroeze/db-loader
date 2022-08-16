@@ -11,7 +11,8 @@
             [clojure.edn :as edn]
             [taoensso.timbre :as log]
             [slf4j-timbre.adapter])
-  (:gen-class))
+  (:gen-class)
+  (:import (com.microsoft.sqlserver.jdbc SQLServerException)))
 
 
 (set! *warn-on-reflection* true)
@@ -21,13 +22,15 @@
 (def release "TODO parse release from build")
 
 (def cli-options
-  [["-v" "--verbose" "TODO display debug"]
+  [["-l" "--load-date-from-filename"
+    "Add today's date or Parse load_date yyyy-MM-dd from filename if that exists. Add load_date column"]
    ["-V" "--version"]
    ["-h" "--help"]])
 
 (defn usage [options-summary]
   (->> ["Use this program to load a <file.parquet>
-         file into a Microsoft SQL database. Files
+         file into a Microsoft SQL database. Using opt
+         --load-date-from-filename Files
          prefixed with an ISO yyyy-MM-dd will have that
          date put into a col call ``load_date```. Files
          starting with a number will fail.
@@ -83,12 +86,6 @@
                                 (string/replace #"%" "pct")))))
 
 
-(defn load-parquet
-  "Returns dataset"
-  [file]
-  (ds/->dataset file {:key-fn clean-cols}))
-
-;;;; sql
 (defn secrets []
   (let [env #(System/getenv %)
         secrets-file (try (slurp (io/file (env "HOME") "secrets.edn"))
@@ -163,47 +160,85 @@
 
 (defn file->db
   "Given tbl and file, use tech ml dataset to parse, then load to db"
-  [conn file-in]
+  [conn file-in & {:keys [load-date-from-filename]}]
   (let [
-        [load-date table-name] (file-path-to-table-name file-in)
-        DS (load-parquet file-in)
-        DS (ds/set-dataset-name DS table-name)
-        DS (assoc DS "load_date" (or load-date (java.time.LocalDate/now)))]
-    (sql/ensure-table! conn DS)
-    (sql/insert-dataset! conn DS)
-    table-name))
+        [load-date schema-and-table] (file-path-to-table-name file-in)
+        [schema table-name] (string/split schema-and-table #"\.")
+        DS (ds/->dataset file-in {:key-fn clean-cols})
+        DS (if load-date-from-filename
+             (assoc DS "load_date" (or load-date (java.time.LocalDate/now)))
+             DS)
+        create-sql-stmt (sql/create-sql "Microsoft SQL Server" DS {:table-name schema-and-table})
+        _ (println
+            "
+            Summary: \n
+            \n
+            Sql Create Statement:\n
+            "
+            create-sql-stmt
+            "\n
+            Target Schema and Table: " schema-and-table
+            )
+        ensure-table-fn #(sql/ensure-table! conn DS {:table-name schema-and-table})
+        ]
 
+    (try
+      (do (ensure-table-fn)
+        (println "schema-and-table var: " schema-and-table))
+      (catch Throwable e                                    ;SQLServerException e
+        (do
+          (log/error :throwable e)
+          (log/warn :sql-dll "caught exception while creating table and schema:" schema-and-table "...creating schema: " schema)
+          (jdbc/execute! conn [(format "create schema %s" schema)])
+          (.commit conn)
+          (log/warn :sql-dll "...Done.")))
+      (finally (ensure-table-fn))
+      )
+    (sql/insert-dataset! conn DS {:table-name schema-and-table})
+    schema-and-table))
 
 (rcf/tests
+
+
   (def conn (jdbc/get-connection
-              (db-spec (secrets))
-              {:auto-commit false}))
+                (db-spec (secrets))
+                {:auto-commit false}))
+
   (def filename "test/data/fact.test.parquet")
   (def DS (ds/->dataset [{:x 1 :y 2} {:x 2 :y 4}]))
   (ds/write! DS filename)
   (ds/write! DS "test/data/test.csv")
-  (def DS2 (load-parquet filename))
+  (def to-ds #(ds/->dataset % {:key-fn clean-cols}))
+  (def DS2 (to-ds filename))
+
+  (file-path-to-table-name filename)                        ; fact.test
+
   (file->db conn filename) := "fact.test"
 
   (def filename2 "test/data/test.parquet")
   (def DS3 (ds/->dataset [{:x 1 :y 2} {:x 2 :y 4}]))
   (ds/write! DS3 filename2)
-  (def DS4 (load-parquet filename2))
+  (def DS4 (to-ds filename2))
   (file->db conn filename2) := "test"
 
   (def DS (ds/->dataset [{:x 1 :y 2} {:x 2 :y 4}]))
 
   (ds/write! DS "test/data/test.parquet")
-  (-> (load-parquet (io/file "test/data/test.parquet")) ffirst) := (-> DS ffirst)
+  (-> (to-ds (io/file "test/data/test.parquet")) ffirst) := (-> DS ffirst)
   (ds/write! DS "test/data/fact.test.test.parquet")
 
-  (def dated-file "test/data/2022-08-10-fact.test.parquet")
+  (def dated-file "test/data/2022-08-10-fact.test_dated.parquet")
+  ;(file-path-to-table-name dated-file)
   (def dated-ds (ds/write! DS dated-file))
   (file->db conn dated-file)
+  (file-path-to-table-name dated-file)
+  (def ds11 (to-ds dated-file))
 
-  (jdbc/execute! conn ["drop table test"])
-  (jdbc/execute! conn ["select * from fact.test"])
-
+  (file->db conn dated-file {:load-date-from-filename true}) := "fact.test_dated"
+  (-> (sql/sql->dataset conn "select * from fact.test_dated")
+    (ds/column "load_date")
+    first
+    str) := "2022-08-10"
   )
 
 
@@ -213,7 +248,8 @@
   ;; todo add resource dir to build to configure logging
   (let [{:keys [options arguments file-in exit-message ok?]}
         (validate-args args)
-        {:keys [:parquet :version :help]}
+        {:keys [:parquet :load-date-from-filename
+                :version :help]}
         options]
     (if exit-message
       (exit (if ok? 0 1) exit-message)
@@ -221,6 +257,7 @@
             (file->db (jdbc/get-connection
                         (db-spec (secrets))
                         {:auto-commit false})
-                      file-in))))
+                      file-in
+              {:load-date-from-filename load-date-from-filename}))))
   (shutdown-agents))
 
