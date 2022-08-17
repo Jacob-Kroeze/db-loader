@@ -76,4 +76,13 @@
                              "--report-unsupported-elements-at-runtime"
                              ;;"--trace-class-initialization=jdk.xml.internal.SecuritySupport"
                              ;;"--trace-class-initialization=com.microsoft.sqlserver.jdbc.SQLServerResource"
-                             ))}}}
+                             ))}
+  native-image-win {:doc "Build native image for Windows"
+                    :depends [graalvm uberjar]
+                    :task (do
+                            (shell (str (fs/file graalvm "bin" (if windows? "gu.cmd" "gu")))
+                              "install" "native-image")
+                            (shell (str (fs/file graalvm "bin" (if windows? "native-image.cmd" "native-image")))
+                              "-jar" "dbloader.jar"
+                              "--static"
+                              "TODO"))}}}
